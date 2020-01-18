@@ -1,0 +1,45 @@
+;; Racket Scheme - find the path to a file in a file package
+;;
+;; (file-exists? fsobject list-string) consumes an FSObject and a (listof Str),  
+;; and produces true if the list of strings represents a path to  
+;; a File in the tree, and false otherwise  
+;; file-exists?: FSObject (listof Str) -> Bool  
+;; Examples:  
+(check-expect (file-exists? example-fs  
+                            (list "root" "Slides" "cs135" "11-trees.pdf")) true)  
+;; This next example is false because it's a path to a Dir  
+(check-expect (file-exists? example-fs (list "root" "Dan")) false)  
+;; And this because it's not a valid path  
+(check-expect (file-exists? example-fs (list "readme.txt")) false)  
+  
+(define (file-exists? fsobject list-string)  
+    (cond [(empty? list-string) false]  
+          [(file? fsobject) (and (string=? (file-name fsobject)  
+                                           (first list-string))  
+                                 (= 1 (length list-string)))]  
+          [(empty? (dir-contents fsobject)) false]  
+          [(not (string=? (dir-name fsobject) (first list-string))) false]  
+          [else (local  
+                  ;; (exists? Dir list-string) consumes a Dir and a  
+                  ;; list of string and produces a boolean result true  
+                  ;; if the if the list of strings represents a path to  
+                  ;; a File in the Dir, and false otherwise  
+                  ;; exists?: Dir (listof Str) -> Bool  
+                  [(define (exists? Dir list-string)  
+                          (cond [(file-exists? (first (dir-contents Dir))  
+                                               (rest list-string)) true]  
+                                [else (file-exists? (make-dir (dir-name Dir)  
+                                                              (dir-owner Dir)  
+                           (rest (dir-contents Dir))) list-string)]))]  
+                  (exists? fsobject list-string))]))  
+  
+;; Tests:  
+(check-expect (file-exists? example-fs empty) false)  
+(check-expect (file-exists? example2 (list "Sunday" "it" "we")) true)  
+(check-expect (file-exists? example2 (list "Sunday" "he")) true)  
+(check-expect (file-exists? (make-file "hi" 23 'hi) '("hi")) true)  
+(check-expect (file-exists? (make-file "hi" 23 'hi) '("yo")) false)  
+(check-expect (file-exists? example2 (list "Sunday" "she" "it" "we")) false)  
+(check-expect (file-exists? example2 (list "Sunday" "she")) true)  
+(check-expect (file-exists? example-fs (list "root" "Dan" "music")) false)  
+(check-expect (file-exists? example-fs empty) false) 
